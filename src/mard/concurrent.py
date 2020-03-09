@@ -104,19 +104,17 @@ class ProcessManager(object):
 
 
 def pipeline(
-		producer_function,
-		mapper_function,
+		producer_function: Callable[[], Iterable[T1]],
+		mapper_function: Callable[[T1], T2],
 		producer_count=1,
 		mapper_count=cpu_count()
-):
+) -> Generator[T2, None, None]:
 	producer_function = worker_producer(producer_function)
 	mapper_function = worker_mapper(mapper_function)
 
 	input_queue, output_queue = Queue(), Queue()
 
-	if mapper_count % producer_count != 0:
-		raise AssertionError()
-
+	assert mapper_count % producer_count == 0
 	producer_sentinel_count = mapper_count // producer_count
 
 	ppg = (
