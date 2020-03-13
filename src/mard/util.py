@@ -1,6 +1,8 @@
 import logging
+from collections import defaultdict
 from functools import wraps
-from typing import Callable, TypeVar, Union
+from os import getpid
+from typing import Callable, TypeVar, Union, Dict
 
 T1 = TypeVar('T1')
 T2 = TypeVar('T2')
@@ -28,3 +30,12 @@ def try_or_default(default_value: T3 = None) -> Decorator:
 		return wrapper
 
 	return decorator
+
+
+class Singleton(object):
+
+	def __init__(self, factory: Callable[[], T1]):
+		self._instances: Dict[int, T1] = defaultdict(factory)
+
+	def get_instance(self) -> T1:
+		return self._instances[getpid()]
