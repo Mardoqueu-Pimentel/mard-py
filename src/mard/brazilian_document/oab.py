@@ -34,17 +34,24 @@ br_states_initials = {
 
 oab_digits = digit + (space.zero_or_more() + digit).repeat(3, 7)
 
-br_states_initials_literals = map(Regex.literal, br_states_initials)
+br_states_initials_literals = (
+	space.zero_or_more().join(*(Regex.literal(y) for y in x))
+	for x in br_states_initials
+)
 oab_states = Regex.one_of(*br_states_initials_literals)
 
 oab_initials = space.zero_or_more().join(
 	Regex.literal('O'), Regex.literal('A'), Regex.literal('B')
 )
 
-permutation_elements = (('I', oab_initials), ('D', oab_digits), ('S', oab_states))
+permutation_elements = (
+	('I', oab_initials),
+	('D', oab_digits),
+	('S', oab_states)
+)
 oab_pattern_permutations = (
 	NamedGroup(''.join(name for name, arg in args)).content(
-		Regex.one_of(*(arg for name, arg in args))
+		space.zero_or_more().join(*(arg for name, arg in args))
 	)
 	for args in itertools.permutations(permutation_elements)
 )

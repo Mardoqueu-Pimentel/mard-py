@@ -54,6 +54,11 @@ class Regex(object):
 		content = '|'.join(x._pattern for x in contents)
 		return Regex(fr'(?:{content})')
 
+	@staticmethod
+	def combine(*contents: 'Regex'):
+		content = ''.join(x._pattern for x in contents)
+		return Regex(content)
+
 
 class NamedGroup(object):
 
