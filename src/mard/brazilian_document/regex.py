@@ -1,5 +1,7 @@
 import re
 
+from overload import overload
+
 
 class Regex(object):
 
@@ -8,6 +10,9 @@ class Regex(object):
 
 	def __str__(self):
 		return self._pattern
+
+	def __add__(self, other: 'Regex'):
+		return Regex(self._pattern + other._pattern)
 
 	def optional(self):
 		content = fr'(?:{self})?'
@@ -21,12 +26,33 @@ class Regex(object):
 		content = fr'(?:{self})+'
 		return Regex(content)
 
+	@overload
+	def repeat(self, times: int):
+		return Regex(fr'(?:{self}){times}')
+
+	@repeat.add
+	def repeat(self, lower_bound: int, upper_bound: int):
+		return Regex(fr'(?:{self}){{{lower_bound}, {upper_bound}}}')
+
 	def join(self, *contents: 'Regex'):
 		content = self._pattern.join(map(str, contents))
 		return Regex(content)
 
-	def compile(self):
-		return re.compile(self._pattern)
+	def compile(self, ignore_case=False):
+		flags = re.UNICODE
+		if ignore_case:
+			flags |= re.IGNORECASE
+
+		return re.compile(self._pattern, flags=flags)
+
+	@staticmethod
+	def literal(content: str):
+		return Regex(re.escape(content))
+
+	@staticmethod
+	def one_of(*contents: 'Regex'):
+		content = '|'.join(x._pattern for x in contents)
+		return Regex(fr'(?:{content})')
 
 
 class NamedGroup(object):
@@ -45,5 +71,4 @@ def literal(content: str):
 
 space = Regex(r'\s')
 digit = Regex(r'\d')
-
 

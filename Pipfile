@@ -9,6 +9,7 @@ pytest = "*"
 
 [packages]
 click = "*"
+overload = "*"
 
 [requires]
 python_version = "3.7"
