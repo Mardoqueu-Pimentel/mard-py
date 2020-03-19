@@ -32,7 +32,7 @@ class Regex(object):
 
 	@repeat.add
 	def repeat(self, lower_bound: int, upper_bound: int):
-		return Regex(fr'(?:{self}){{{lower_bound}, {upper_bound}}}')
+		return Regex(fr'(?:{self}){{{lower_bound},{upper_bound}}}')
 
 	def join(self, *contents: 'Regex'):
 		content = self._pattern.join(map(str, contents))
@@ -44,20 +44,6 @@ class Regex(object):
 			flags |= re.IGNORECASE
 
 		return re.compile(self._pattern, flags=flags)
-
-	@staticmethod
-	def literal(content: str):
-		return Regex(re.escape(content))
-
-	@staticmethod
-	def one_of(*contents: 'Regex'):
-		content = '|'.join(x._pattern for x in contents)
-		return Regex(fr'(?:{content})')
-
-	@staticmethod
-	def combine(*contents: 'Regex'):
-		content = ''.join(x._pattern for x in contents)
-		return Regex(content)
 
 
 class NamedGroup(object):
@@ -74,6 +60,16 @@ def literal(content: str):
 	return Regex(re.escape(content))
 
 
+def choice(*contents: Regex):
+	content = '|'.join(map(str, contents))
+	return Regex(fr'(?:{content})')
+
+
+def combine(*contents: Regex):
+	content = ''.join(map(str, contents))
+	return Regex(content)
+
+
 space = Regex(r'\s')
 digit = Regex(r'\d')
-
+not_digit = Regex(r'\D')

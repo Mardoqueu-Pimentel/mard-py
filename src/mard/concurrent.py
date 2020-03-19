@@ -56,7 +56,7 @@ def worker_producer(f):
 	def wrapper(input_queue: Queue, sentinel_count: int):
 		try:
 			for value in f():
-				input_queue.put(value)
+				input_queue.put(value, block=True, timeout=30)
 		except Exception as error:
 			logger.exception(f'error in the producer function: {error}')
 
@@ -69,7 +69,7 @@ def worker_producer(f):
 def worker_mapper(f):
 	def wrapper(input_queue: Queue, output_queue: Queue):
 		while True:
-			value = input_queue.get()
+			value = input_queue.get(block=True, timeout=30)
 			if value is Sentinel:
 				break
 
@@ -107,12 +107,15 @@ def pipeline(
 		producer_function: Callable[[], Iterable[T1]],
 		mapper_function: Callable[[T1], T2],
 		producer_count=1,
-		mapper_count=cpu_count()
+		mapper_count=cpu_count(),
+		size_factor=100
 ) -> Generator[T2, None, None]:
 	producer_function = worker_producer(producer_function)
 	mapper_function = worker_mapper(mapper_function)
 
-	input_queue, output_queue = Queue(), Queue()
+	maxsize = mapper_count * size_factor
+	input_queue = Queue(maxsize=maxsize)
+	output_queue = Queue(maxsize=maxsize)
 
 	assert mapper_count % producer_count == 0
 	producer_sentinel_count = mapper_count // producer_count

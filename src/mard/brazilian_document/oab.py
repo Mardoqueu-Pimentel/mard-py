@@ -1,59 +1,65 @@
 import itertools
 
-from mard.brazilian_document.regex import digit, space, Regex, NamedGroup
+from mard.brazilian_document.info import brazilian_states
+from mard.brazilian_document.regex import digit, space, NamedGroup, choice, literal, not_digit, Regex
 
-br_states_initials = {
-	'AC': 'Acre',
-	'AL': 'Alagoas',
-	'AP': 'Amapá',
-	'AM': 'Amazonas',
-	'BA': 'Bahia',
-	'CE': 'Ceará',
-	'DF': 'Distrito Federal',
-	'ES': 'Espírito Santo',
-	'GO': 'Goiás',
-	'MA': 'Maranhão',
-	'MT': 'Mato Grosso',
-	'MS': 'Mato Grosso do Sul',
-	'MG': 'Minas Gerais',
-	'PA': 'Pará',
-	'PB': 'Paraíba',
-	'PR': 'Paraná',
-	'PE': 'Pernambuco',
-	'PI': 'Piauí',
-	'RJ': 'Rio de Janeiro',
-	'RN': 'Rio Grande do Norte',
-	'RS': 'Rio Grande do Sul',
-	'RO': 'Rondônia',
-	'RR': 'Roraima',
-	'SC': 'Santa Catarina',
-	'SP': 'São Paulo',
-	'SE': 'Sergipe',
-	'TO': 'Tocantins'
-}
 
-oab_digits = digit + (space.zero_or_more() + digit).repeat(3, 7)
-
-br_states_initials_literals = (
-	space.zero_or_more().join(*(Regex.literal(y) for y in x))
-	for x in br_states_initials
-)
-oab_states = Regex.one_of(*br_states_initials_literals)
-
-oab_initials = space.zero_or_more().join(
-	Regex.literal('O'), Regex.literal('A'), Regex.literal('B')
-)
-
-permutation_elements = (
-	('I', oab_initials),
-	('D', oab_digits),
-	('S', oab_states)
-)
-oab_pattern_permutations = (
-	NamedGroup(''.join(name for name, arg in args)).content(
-		space.zero_or_more().join(*(arg for name, arg in args))
+def make_oab_components():
+	oab_literal = space.zero_or_more().join(
+		literal('O'), literal('A'), literal('B')
 	)
-	for args in itertools.permutations(permutation_elements)
-)
-oab_pattern = Regex.one_of(*oab_pattern_permutations) \
-	.compile(ignore_case=True)
+
+	oab_state_literal = (
+		space.zero_or_more().join(*(literal(x) for x in state))
+		for state in brazilian_states
+	)
+	oab_state_literal = choice(*oab_state_literal)
+
+	oab_digit_space = choice(space, literal('.'))
+	oab_digits = digit + (oab_digit_space.zero_or_more() + digit).repeat(3, 7)
+
+	return oab_literal, oab_state_literal, oab_digits
+
+
+def make_oab_pattern():
+	oab_literal, oab_state_literal, oab_digits = make_oab_components()
+
+	oab_digits_prefix = not_digit + (space.zero_or_more() + not_digit).repeat(0, 9)
+	oab_digits = oab_digits_prefix.optional() + oab_digits
+
+	oab_space = choice(space, literal('.'), literal('/'))
+	return NamedGroup('OAB').content(
+		oab_space.zero_or_more().join(
+			oab_literal, oab_state_literal, oab_digits
+		)
+	).compile(ignore_case=True)
+
+
+def make_complex_oab_pattern():
+	oab_literal, oab_state_literal, oab_digits = make_oab_components()
+
+	elem = Regex('(?!OAB)') + not_digit
+	oab_digits_prefix = elem + (space.zero_or_more() + elem).repeat(0, 9)
+	oab_digits = oab_digits_prefix.optional() + oab_digits
+
+	permutations = itertools.permutations((
+		('L', oab_literal),
+		('S', oab_state_literal),
+		('D', oab_digits)
+	))
+
+	oab_space = choice(space, literal('.'), literal('/'))
+	options = (
+		NamedGroup(f'OAB_{nx}{ny}{nz}').content(
+			oab_space.zero_or_more().join(
+				x, y, z
+			)
+		)
+		for (nx, x), (ny, y), (nz, z) in permutations
+	)
+
+	return choice(*options).compile(ignore_case=True)
+
+
+oab_pattern = make_oab_pattern()
+oab_pattern_complex = make_complex_oab_pattern()
