@@ -1,10 +1,9 @@
-import itertools
-
 from mard.brazilian_document.info import brazilian_states
-from mard.brazilian_document.regex import digit, space, NamedGroup, choice, literal, not_digit, Regex
+from mard.regex import (
+	digit, space, choice, literal, RegexParser, NamedGroup, not_digit, Regex)
 
 
-def make_oab_components():
+def make_oab_pattern_components():
 	oab_literal = space.zero_or_more().join(
 		literal('O'), literal('A'), literal('B')
 	)
@@ -21,45 +20,52 @@ def make_oab_components():
 	return oab_literal, oab_state_literal, oab_digits
 
 
-def make_oab_pattern():
-	oab_literal, oab_state_literal, oab_digits = make_oab_components()
+def make_oab_pattern(not_digits_before_digits=10):
+	"""
+	OAB pattern maker
+	Args:
+		not_digits_before_digits: to match patterns like 'OAB/XX Nº XX.XXX',
+		'OAB/XX número XX.XXX', 'OAB/XX n XX.XXX'; The pattern supports n non
+		numerical characters before the digits
+	Returns: the OAB pattern
+	"""
+	oab_literal, oab_state_literal, oab_digits = make_oab_pattern_components()
 
-	oab_digits_prefix = not_digit + (space.zero_or_more() + not_digit).repeat(0, 9)
+	oab_digits_prefix = not_digit + (space.zero_or_more() + not_digit).repeat(
+		0, not_digits_before_digits
+	)
 	oab_digits = oab_digits_prefix.optional() + oab_digits
 
 	oab_space = choice(space, literal('.'), literal('/'))
-	return NamedGroup('OAB').content(
-		oab_space.zero_or_more().join(
-			oab_literal, oab_state_literal, oab_digits
+
+	return oab_space.zero_or_more().join(
+		oab_literal, choice(
+			oab_space.zero_or_more().join(
+				NamedGroup('oab123_state').of(oab_state_literal),
+				NamedGroup('oab123_digits').of(oab_digits)
+			),
+			oab_space.zero_or_more().join(
+				NamedGroup('oab132_digits').of(oab_digits),
+				NamedGroup('oab132_state').of(oab_state_literal),
+			)
 		)
 	).compile(ignore_case=True)
 
 
-def make_complex_oab_pattern():
-	oab_literal, oab_state_literal, oab_digits = make_oab_components()
-
-	elem = Regex('(?!OAB)') + not_digit
-	oab_digits_prefix = elem + (space.zero_or_more() + elem).repeat(0, 9)
-	oab_digits = oab_digits_prefix.optional() + oab_digits
-
-	permutations = itertools.permutations((
-		('L', oab_literal),
-		('S', oab_state_literal),
-		('D', oab_digits)
-	))
-
-	oab_space = choice(space, literal('.'), literal('/'))
-	options = (
-		NamedGroup(f'OAB_{nx}{ny}{nz}').content(
-			oab_space.zero_or_more().join(
-				x, y, z
-			)
-		)
-		for (nx, x), (ny, y), (nz, z) in permutations
-	)
-
-	return choice(*options).compile(ignore_case=True)
-
-
 oab_pattern = make_oab_pattern()
-oab_pattern_complex = make_complex_oab_pattern()
+
+
+def oab_formatter(state: str, digits: str) -> str:
+	digits = ''.join(c for c in digits if c.isdigit())
+	state = ''.join(c.upper() for c in state if c.isalpha())
+	return f'{digits}/{state}'
+
+
+oab_parser = RegexParser(
+	Regex(oab_pattern.pattern),
+	formatters={
+		'oab123_': oab_formatter,
+		'oab132_': oab_formatter
+	},
+	ignore_case=True
+)

@@ -3,17 +3,17 @@ from collections import Counter
 from typing import List
 
 from mard.brazilian_document.document_formatter import (
-	DocumentFormatter
+	Formatter
 )
 
 
-class DocumentParser(object):
+class DocumentValidator(object):
 
 	def __init__(
 			self,
 			document_size: int,
 			factors: List[int],
-			formatter: DocumentFormatter
+			formatter: Formatter
 	):
 		assert document_size == formatter.document_size == len(factors) + 1
 
@@ -25,7 +25,7 @@ class DocumentParser(object):
 		summation = sum(i * j for i, j in zip(numbers, self.factors))
 		return summation * 10 % 11 % 10
 
-	def parse(self, document: str):
+	def validate(self, document: str):
 		document = [int(x) for x in reversed(document) if x.isdigit()]
 		size = len(document)
 		if size > self.document_size:

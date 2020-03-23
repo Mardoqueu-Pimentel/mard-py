@@ -1,5 +1,5 @@
-from typing import AnyStr
 import re
+from typing import AnyStr
 
 digit = r'\d'
 spaces = r'\s*'

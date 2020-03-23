@@ -2,7 +2,7 @@ import itertools
 from typing import Tuple
 
 
-class DocumentFormatter(object):
+class Formatter(object):
 
 	def __init__(self, template: str, sizes: Tuple[int, ...]):
 		self._template = template
