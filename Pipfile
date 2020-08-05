@@ -10,6 +10,7 @@ pytest = "*"
 [packages]
 click = "*"
 overload = "*"
+sqlalchemy = "*"
 
 [requires]
 python_version = "3.8"
